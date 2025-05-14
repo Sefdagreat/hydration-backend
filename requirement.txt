@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+motor
+pydantic
+python-dotenv
+pandas
+joblib
+scikit-learn
+python-jose[cryptography]
+python-multipart
