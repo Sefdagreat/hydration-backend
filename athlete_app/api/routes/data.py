@@ -1,19 +1,32 @@
-# athlete-app/api/routes/data.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from datetime import datetime
+from fastapi.responses import JSONResponse
 from athlete_app.models.schemas import SensorData
 from athlete_app.api.deps import get_current_user
 from athlete_app.core.config import db
 from athlete_app.services.predictor import predict_hydration
-from bson import ObjectId
-from fastapi import Request
-from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
 @router.post("/receive")
 async def receive_data(data: SensorData, user=Depends(get_current_user)):
     input_data = data.dict()
+
+    # Validate all fields
+    for key, value in input_data.items():
+        if value is None or value <= 0:
+            await db.sensor_warnings.insert_one({
+                "user": user["username"],
+                "missing_field": key,
+                "received_data": input_data,
+                "timestamp": datetime.utcnow()
+            })
+            return {
+                "status": "error",
+                "message": f"Invalid or missing value for: {key}",
+                "received": input_data
+            }
+
     prediction, combined = predict_hydration(input_data)
 
     await db.sensor_data.insert_one({
@@ -30,6 +43,7 @@ async def receive_data(data: SensorData, user=Depends(get_current_user)):
     })
 
     return {
+        "status": "success",
         "raw_sensor_data": input_data,
         "processed_combined_metrics": combined,
         "hydration_state_prediction": prediction
@@ -41,7 +55,7 @@ async def get_latest_status(user=Depends(get_current_user)):
         {"user": user["username"]}, sort=[("timestamp", -1)]
     )
     if record and "_id" in record:
-        record["_id"] = str(record["_id"])  # Fix serialization issue
+        record["_id"] = str(record["_id"])
     return record or {"hydration_status": "Unknown"}
 
 @router.get("/logs")
@@ -49,7 +63,7 @@ async def get_logs(user=Depends(get_current_user)):
     cursor = db.predictions.find({"user": user["username"]}).sort("timestamp", -1)
     logs = []
     async for doc in cursor:
-        doc["_id"] = str(doc["_id"])  # Fix for each document
+        doc["_id"] = str(doc["_id"])
         logs.append(doc)
     return logs
 
@@ -61,6 +75,12 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
         body_temperature = float(sensor_map['MLX90614']['value'])
         skin_conductance = float(sensor_map['GSR']['value'])
     except KeyError as e:
+        await db.sensor_warnings.insert_one({
+            "user": user["username"],
+            "missing_field": str(e),
+            "received_data": payload,
+            "timestamp": datetime.utcnow()
+        })
         return JSONResponse(status_code=400, content={"error": f"Missing sensor: {e}"})
 
     structured = {
