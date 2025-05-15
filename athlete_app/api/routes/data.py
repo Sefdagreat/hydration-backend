@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Request
+# athlete-app/api/routes/data.py
+from fastapi import APIRouter, Depends, Request, Query
 from datetime import datetime
 from fastapi.responses import JSONResponse
 from athlete_app.models.schemas import SensorData
@@ -12,13 +13,18 @@ router = APIRouter()
 async def receive_data(data: SensorData, user=Depends(get_current_user)):
     input_data = data.dict()
 
-    # Validate all fields
     for key, value in input_data.items():
         if value is None or value <= 0:
             await db.sensor_warnings.insert_one({
                 "user": user["username"],
                 "missing_field": key,
                 "received_data": input_data,
+                "timestamp": datetime.utcnow()
+            })
+            await db.alerts.insert_one({
+                "athlete_id": user["username"],
+                "alert_type": "SensorWarning",
+                "description": f"Missing or invalid value: {key}",
                 "timestamp": datetime.utcnow()
             })
             return {
@@ -49,24 +55,6 @@ async def receive_data(data: SensorData, user=Depends(get_current_user)):
         "hydration_state_prediction": prediction
     }
 
-@router.get("/status/latest")
-async def get_latest_status(user=Depends(get_current_user)):
-    record = await db.predictions.find_one(
-        {"user": user["username"]}, sort=[("timestamp", -1)]
-    )
-    if record and "_id" in record:
-        record["_id"] = str(record["_id"])
-    return record or {"hydration_status": "Unknown"}
-
-@router.get("/logs")
-async def get_logs(user=Depends(get_current_user)):
-    cursor = db.predictions.find({"user": user["username"]}).sort("timestamp", -1)
-    logs = []
-    async for doc in cursor:
-        doc["_id"] = str(doc["_id"])
-        logs.append(doc)
-    return logs
-
 @router.post("/raw")
 async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_user)):
     sensor_map = {item['sensor_type']: item for item in payload}
@@ -79,6 +67,12 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
             "user": user["username"],
             "missing_field": str(e),
             "received_data": payload,
+            "timestamp": datetime.utcnow()
+        })
+        await db.alerts.insert_one({
+            "athlete_id": user["username"],
+            "alert_type": "SensorWarning",
+            "description": f"Missing sensor: {e}",
             "timestamp": datetime.utcnow()
         })
         return JSONResponse(status_code=400, content={"error": f"Missing sensor: {e}"})
@@ -108,6 +102,37 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
         "prediction": prediction,
         "combined_metrics": combined
     }
+
+@router.get("/status/latest")
+async def get_latest_status(user=Depends(get_current_user)):
+    record = await db.predictions.find_one(
+        {"user": user["username"]}, sort=[("timestamp", -1)]
+    )
+    if record and "_id" in record:
+        record["_id"] = str(record["_id"])
+    return record or {"hydration_status": "Unknown"}
+
+@router.get("/logs")
+async def get_logs(user=Depends(get_current_user)):
+    cursor = db.predictions.find({"user": user["username"]}).sort("timestamp", -1)
+    logs = []
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        logs.append(doc)
+    return logs
+
+@router.get("/warnings")
+async def get_warnings(sensor: str = Query(None), user=Depends(get_current_user)):
+    query = {"user": user["username"]}
+    if sensor:
+        query["missing_field"] = sensor
+
+    cursor = db.sensor_warnings.find(query).sort("timestamp", -1)
+    warnings = []
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        warnings.append(doc)
+    return warnings
 
 @router.get("/time")
 async def get_server_time():
