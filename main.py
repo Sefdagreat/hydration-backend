@@ -1,0 +1,37 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Import routers
+from athlete_app.api.routes import auth, profile as athlete_profile, data, user
+from coach_app.api.routes import dashboard, athletes, alerts, profile as coach_profile, settings, auth as coach_auth
+
+# Init app
+app = FastAPI(
+    title="Smart Hydration API",
+    version="1.0.0",
+    description="Unified API for athlete and coach apps"
+)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include all routers under one app
+# ATHLETE ROUTES
+app.include_router(auth.router, prefix="/auth", tags=["Athlete Auth"])
+app.include_router(athlete_profile.router, prefix="/user", tags=["Athlete Profile"])
+app.include_router(data.router, prefix="/data", tags=["Sensor Data"])
+app.include_router(user.router, prefix="/account", tags=["Athlete Account"])
+
+# COACH ROUTES
+app.include_router(coach_auth.router, prefix="/coach/auth", tags=["Coach Auth"])
+app.include_router(dashboard.router, prefix="/dashboard", tags=["Coach Dashboard"])
+app.include_router(athletes.router, prefix="/athletes", tags=["Coach Athletes"])
+app.include_router(alerts.router, prefix="/alerts", tags=["Coach Alerts"])
+app.include_router(coach_profile.router, prefix="/profile", tags=["Coach Profile"])
+app.include_router(settings.router, prefix="/settings", tags=["Coach Settings"])
