@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, Request, Query
 from datetime import datetime
 from fastapi.responses import JSONResponse
+from typing import List
 from athlete_app.models.schemas import SensorData
 from athlete_app.api.deps import get_current_user
 from athlete_app.core.config import db
@@ -10,49 +11,57 @@ from athlete_app.services.predictor import predict_hydration
 router = APIRouter()
 
 @router.post("/receive")
-async def receive_data(data: SensorData, user=Depends(get_current_user)):
-    input_data = data.dict()
+async def receive_data(data: List[SensorData], user=Depends(get_current_user)):
+    results = []
 
-    for key, value in input_data.items():
-        if value is None or value <= 0:
-            await db.sensor_warnings.insert_one({
-                "user": user["username"],
-                "missing_field": key,
-                "received_data": input_data,
-                "timestamp": datetime.utcnow()
-            })
-            await db.alerts.insert_one({
-                "athlete_id": user["username"],
-                "alert_type": "SensorWarning",
-                "description": f"Missing or invalid value: {key}",
-                "timestamp": datetime.utcnow()
-            })
-            return {
-                "status": "error",
-                "message": f"Invalid or missing value for: {key}",
-                "received": input_data
-            }
+    for entry in data:
+        input_data = entry.dict()
 
-    prediction, combined = predict_hydration(input_data)
+        for key, value in input_data.items():
+            if value is None or value <= 0:
+                await db.sensor_warnings.insert_one({
+                    "user": user["username"],
+                    "missing_field": key,
+                    "received_data": input_data,
+                    "timestamp": datetime.utcnow()
+                })
+                await db.alerts.insert_one({
+                    "athlete_id": user["username"],
+                    "alert_type": "SensorWarning",
+                    "description": f"Missing or invalid value: {key}",
+                    "timestamp": datetime.utcnow()
+                })
+                return {
+                    "status": "error",
+                    "message": f"Invalid or missing value for: {key}",
+                    "received": input_data
+                }
 
-    await db.sensor_data.insert_one({
-        "user": user["username"],
-        **input_data,
-        "combined_metrics": combined,
-        "timestamp": datetime.utcnow()
-    })
+        prediction, combined = predict_hydration(input_data)
 
-    await db.predictions.insert_one({
-        "user": user["username"],
-        "hydration_status": prediction,
-        "timestamp": datetime.utcnow()
-    })
+        await db.sensor_data.insert_one({
+            "user": user["username"],
+            **input_data,
+            "combined_metrics": combined,
+            "timestamp": datetime.utcnow()
+        })
+
+        await db.predictions.insert_one({
+            "user": user["username"],
+            "hydration_status": prediction,
+            "timestamp": datetime.utcnow()
+        })
+
+        results.append({
+            "raw_sensor_data": input_data,
+            "processed_combined_metrics": combined,
+            "hydration_state_prediction": prediction
+        })
 
     return {
         "status": "success",
-        "raw_sensor_data": input_data,
-        "processed_combined_metrics": combined,
-        "hydration_state_prediction": prediction
+        "last_prediction": results[-1] if results else None,
+        "all_predictions": results
     }
 
 @router.post("/raw")

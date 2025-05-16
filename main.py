@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
 from athlete_app.api.routes import auth, profile as athlete_profile, data, user
+from athlete_app.api.routes import device
 from coach_app.api.routes import dashboard, athletes, alerts, profile as coach_profile, settings, auth as coach_auth
 
 # Init app
@@ -27,6 +28,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Athlete Auth"])
 app.include_router(athlete_profile.router, prefix="/user", tags=["Athlete Profile"])
 app.include_router(data.router, prefix="/data", tags=["Sensor Data"])
 app.include_router(user.router, prefix="/account", tags=["Athlete Account"])
+app.include_router(device.router, prefix="/device", tags=["Device"])
 
 # COACH ROUTES
 app.include_router(coach_auth.router, prefix="/coach/auth", tags=["Coach Auth"])
