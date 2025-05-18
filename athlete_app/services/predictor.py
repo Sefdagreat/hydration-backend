@@ -3,17 +3,22 @@ import pandas as pd
 from athlete_app.core.model_loader import model, scaler, FEATURE_ORDER
 
 def normalize_skin_conductance(raw_value: float) -> float:
-    # Scale integer sensor values to match model range (0.5 - 2.5 scale)
-    return raw_value * 1.25
+    return raw_value * 1.25  # Convert from hardware scale
 
 def predict_hydration(data: dict) -> tuple[str, float]:
-    # Normalize SC and calculate combined metrics
     data = data.copy()
+
     data["skin_conductance"] = normalize_skin_conductance(data["skin_conductance"])
-    combined = sum([data["heart_rate"], data["body_temperature"], data["skin_conductance"]]) / 3
+
+    # Calculate combined metrics across 4 features
+    combined = (
+        data["heart_rate"]
+        + data["body_temperature"]
+        + data["skin_conductance"]
+        + data["ecg_sigmoid"]
+    ) / 4
     data["combined_metrics"] = combined
 
-    # Align features for model input
     input_df = pd.DataFrame([data])[FEATURE_ORDER]
     scaled_input = scaler.transform(input_df)
     prediction = model.predict(scaled_input)[0]

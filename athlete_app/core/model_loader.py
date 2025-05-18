@@ -9,10 +9,11 @@ from sklearn.preprocessing import StandardScaler
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'hydration_model_final.joblib'))
 SCALER_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'hydration_scaler_final.joblib'))
-TRAIN_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'cleaned_hydration_train.csv'))
+TRAIN_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'train_ecg_sigmoid.csv'))
 
 # Feature order used in both training and prediction
-FEATURE_ORDER = ["heart_rate", "body_temperature", "skin_conductance", "combined_metrics"]
+FEATURE_ORDER = ["heart_rate", "body_temperature", "skin_conductance", "ecg_sigmoid", "combined_metrics"]
+
 
 # Load model and scaler
 if not os.path.exists(MODEL_PATH):
