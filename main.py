@@ -1,5 +1,7 @@
+#backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 
 # Import routers
 from athlete_app.api.routes import auth, profile as athlete_profile, data, user
