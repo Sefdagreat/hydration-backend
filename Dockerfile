@@ -1,3 +1,4 @@
+# Dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -12,10 +13,11 @@ COPY . .
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-RUN ls -lh athlete_app/model/ && python -c "import joblib; joblib.load('athlete_app/model/hydration_model_balanced.joblib')"
 
+# Optional: verify model files exist (not load)
+RUN ls -lh athlete_app/model/
 
-# 🔥 Crucial line to fix import of backend module
 ENV PYTHONPATH=/app
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ✅ Final: run model check before starting the app
+CMD ["bash", "-c", "python check/model.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
