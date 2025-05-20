@@ -8,5 +8,5 @@ python-multipart
 python-jose[cryptography]
 
 # Pin to the exact versions used in Colab:
-scikit-learn==1.6.1
+scikit-learn==1.1.3
 joblib==1.5.0
