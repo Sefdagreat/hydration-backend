@@ -87,7 +87,6 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
         })
         return JSONResponse(status_code=400, content={"error": f"Missing sensor: {e}"})
 
-    # Apply sigmoid transform to ECG
     def sigmoid(ecg_raw, k=0.005, center=2040):
         return 1 / (1 + pow(2.71828, -k * (ecg_raw - center)))
 
@@ -121,6 +120,57 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
     return {
         "prediction": prediction,
         "combined_metrics": structured["combined_metrics"]
+    }
+
+@router.post("/receive-raw-stream")
+async def receive_raw_stream(payload: list[dict], user=Depends(get_current_user)):
+    parsed = []
+    for row in payload:
+        try:
+            heart_rate = float(row["max30105"]["bpm"])
+            body_temp = float(row["gy906"])
+            skin_conductance = float(row["groveGsr"])
+            ecg_raw = int(row["ad8232"])
+
+            def sigmoid(x, k=0.005, c=2040):
+                return 1 / (1 + pow(2.71828, -k * (x - c)))
+
+            ecg_sigmoid = sigmoid(ecg_raw)
+
+            structured = {
+                "heart_rate": heart_rate,
+                "body_temperature": body_temp,
+                "skin_conductance": skin_conductance,
+                "ecg_sigmoid": ecg_sigmoid,
+            }
+
+            prediction, combined = predict_hydration(structured)
+
+            await db.sensor_data.insert_one({
+                "user": user["username"],
+                **structured,
+                "combined_metrics": combined,
+                "timestamp": datetime.utcnow()
+            })
+
+            await db.predictions.insert_one({
+                "user": user["username"],
+                "hydration_status": prediction,
+                "timestamp": datetime.utcnow()
+            })
+
+            parsed.append({
+                "raw": row,
+                "hydration": prediction
+            })
+
+        except Exception as e:
+            print("❌ Parse error:", e)
+
+    return {
+        "status": "success",
+        "count": len(parsed),
+        "parsed": parsed
     }
 
 @router.get("/status/latest")
