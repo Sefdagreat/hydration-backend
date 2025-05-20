@@ -4,7 +4,9 @@ motor
 pydantic
 python-dotenv
 pandas
-joblib
-scikit-learn
-python-jose[cryptography]
 python-multipart
+python-jose[cryptography]
+
+# Pin to the exact versions used in Colab:
+scikit-learn==1.6.1
+joblib==1.5.0
