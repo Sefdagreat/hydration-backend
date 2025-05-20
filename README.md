@@ -16,35 +16,59 @@ https://hydration-backend.up.railway.app
 
 ```bash
 backend/
+├── __init__.py
 ├── main.py                 # Unified entrypoint for FastAPI
 ├── athlete_app/
-│   ├── api/routes/
-│   │   ├── auth.py
-│   │   ├── profile.py
-│   │   ├── data.py
-│   │   └── user.py
+│   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── auth.py
+│   │       ├── profile.py
+│   │       ├── data.py
+│   │       ├── user.py
+│   │       └── session.py
 │   ├── core/
+│   │   ├── __init__.py
 │   │   ├── config.py
 │   │   ├── model_loader.py
 │   │   └── security.py
-│   ├── models/schemas.py
-│   ├── services/predictor.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── predictor.py
 │   └── model/
-│       ├── hydration_model_final.joblib
-│       ├── hydration_scaler_final.joblib
-│       └── cleaned_hydration_train.csv
+│       ├── hydration_model_balanced.joblib
+│       ├── hydration_scaler_balanced.joblib
+│       └── train_ecg_sigmoid.csv
 ├── coach_app/
-│   ├── api/routes/
-│   │   ├── dashboard.py
-│   │   ├── athletes.py
-│   │   ├── alerts.py
-│   │   ├── profile.py
-│   │   ├── settings.py
-│   │   └── auth.py
-│   ├── core/config.py
-│   ├── models/schemas.py
-│   └── services/utils.py
-├── shared/database.py
+│   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── dashboard.py
+│   │       ├── athletes.py
+│   │       ├── alerts.py
+│   │       ├── profile.py
+│   │       ├── settings.py
+│   │       └── auth.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   └── config.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py
+│   └── services/
+│       ├── __init__.py
+│       └── utils.py
+├── shared/
+│   ├── __init__.py
+│   └── database.py
+├── check/model.py
 ├── .env.example
 ├── requirements.txt
 ├── Dockerfile
@@ -91,6 +115,14 @@ Swagger Docs: http://localhost:8000/docs
 | POST   | /data/receive       | Submit sensor data       |
 | GET    | /data/status/latest | Latest hydration state   |
 | GET    | /data/logs          | Hydration prediction log |
+
+### ⏱ Athlete Sessions
+
+| Method | Path           | Description            |
+| ------ | -------------- | ---------------------- |
+| POST   | /session/start | Start training session |
+| POST   | /session/end   | End training session   |
+| GET    | /session/logs  | Get athlete sessions   |
 
 ### 👤 Athlete Profile
 
