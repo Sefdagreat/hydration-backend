@@ -12,6 +12,8 @@ COPY . .
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+RUN ls -lh athlete_app/model/ && python -c "import joblib; joblib.load('athlete_app/model/hydration_model_balanced.joblib')"
+
 
 # 🔥 Crucial line to fix import of backend module
 ENV PYTHONPATH=/app

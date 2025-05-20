@@ -26,3 +26,6 @@ scaler = joblib.load(SCALER_PATH)
 
 # Optional: load training data (e.g., for SHAP)
 train_df = pd.read_csv(TRAIN_PATH)
+
+print("📦 MODEL_PATH:", os.path.abspath(MODEL_PATH))
+print("📦 SCALER_PATH:", os.path.abspath(SCALER_PATH))
