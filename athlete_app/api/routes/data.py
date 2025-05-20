@@ -125,9 +125,18 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
 @router.post("/receive-raw-stream")
 async def receive_raw_stream(payload: list[dict], user=Depends(get_current_user)):
     parsed = []
+
     for row in payload:
         try:
-            heart_rate = float(row["max30105"]["bpm"])
+            # Extract + validate
+            bpm_raw = row.get("max30105", {}).get("bpm", None)
+            if bpm_raw is None or not isinstance(bpm_raw, (float, int)):
+                raise ValueError("Missing or invalid BPM")
+
+            if bpm_raw <= 0 or bpm_raw > 250:
+                raise ValueError(f"Ignored invalid BPM: {bpm_raw}")
+
+            heart_rate = float(bpm_raw)
             body_temp = float(row["gy906"])
             skin_conductance = float(row["groveGsr"])
             ecg_raw = int(row["ad8232"])
@@ -165,13 +174,16 @@ async def receive_raw_stream(payload: list[dict], user=Depends(get_current_user)
             })
 
         except Exception as e:
-            print("❌ Parse error:", e)
+            import traceback
+            traceback.print_exc()
+            print("↪️ Failing Row:", row)
 
     return {
         "status": "success",
         "count": len(parsed),
         "parsed": parsed
     }
+
 
 @router.get("/status/latest")
 async def get_latest_status(user=Depends(get_current_user)):
