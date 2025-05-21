@@ -7,6 +7,7 @@ from athlete_app.models.schemas import SensorData
 from athlete_app.api.deps import get_current_user
 from athlete_app.core.config import db
 from athlete_app.services.predictor import predict_hydration
+from athlete_app.services.preprocess import extract_features_from_row, HYDRATION_LABELS
 
 router = APIRouter()
 
@@ -38,6 +39,7 @@ async def receive_data(data: List[SensorData], user=Depends(get_current_user)):
                 }
 
         prediction, combined = predict_hydration(input_data)
+        hydration_label = HYDRATION_LABELS.get(prediction, "Unknown")
 
         await db.sensor_data.insert_one({
             "user": user["username"],
@@ -48,14 +50,14 @@ async def receive_data(data: List[SensorData], user=Depends(get_current_user)):
 
         await db.predictions.insert_one({
             "user": user["username"],
-            "hydration_status": prediction,
+            "hydration_status": hydration_label,
             "timestamp": datetime.utcnow()
         })
 
         results.append({
             "raw_sensor_data": input_data,
             "processed_combined_metrics": combined,
-            "hydration_state_prediction": prediction
+            "hydration_state_prediction": hydration_label
         })
 
     return {
@@ -71,7 +73,7 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
         heart_rate = float(sensor_map['MAX30102']['value'])
         body_temperature = float(sensor_map['MLX90614']['value'])
         skin_conductance = float(sensor_map['GSR']['value'])
-        ecg_raw = int(sensor_map['ECG']['value'])  # New: Raw ECG
+        ecg_raw = int(sensor_map['ECG']['value'])
     except KeyError as e:
         await db.sensor_warnings.insert_one({
             "user": user["username"],
@@ -104,6 +106,7 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
     ) / 4
 
     prediction, _ = predict_hydration(structured)
+    hydration_label = HYDRATION_LABELS.get(prediction, "Unknown")
 
     await db.sensor_data.insert_one({
         "user": user["username"],
@@ -113,12 +116,12 @@ async def receive_raw_sensor_data(payload: list[dict], user=Depends(get_current_
 
     await db.predictions.insert_one({
         "user": user["username"],
-        "hydration_status": prediction,
+        "hydration_status": hydration_label,
         "timestamp": datetime.utcnow()
     })
 
     return {
-        "prediction": prediction,
+        "prediction": hydration_label,
         "combined_metrics": structured["combined_metrics"]
     }
 
@@ -128,32 +131,9 @@ async def receive_raw_stream(payload: list[dict], user=Depends(get_current_user)
 
     for row in payload:
         try:
-            # Extract + validate
-            bpm_raw = row.get("max30105", {}).get("bpm", None)
-            if bpm_raw is None or not isinstance(bpm_raw, (float, int)):
-                raise ValueError("Missing or invalid BPM")
-
-            if bpm_raw <= 0 or bpm_raw > 250:
-                raise ValueError(f"Ignored invalid BPM: {bpm_raw}")
-
-            heart_rate = float(bpm_raw)
-            body_temp = float(row["gy906"])
-            skin_conductance = float(row["groveGsr"])
-            ecg_raw = int(row["ad8232"])
-
-            def sigmoid(x, k=0.005, c=2040):
-                return 1 / (1 + pow(2.71828, -k * (x - c)))
-
-            ecg_sigmoid = sigmoid(ecg_raw)
-
-            structured = {
-                "heart_rate": heart_rate,
-                "body_temperature": body_temp,
-                "skin_conductance": skin_conductance,
-                "ecg_sigmoid": ecg_sigmoid,
-            }
-
+            structured = extract_features_from_row(row)
             prediction, combined = predict_hydration(structured)
+            hydration_label = HYDRATION_LABELS.get(prediction, "Unknown")
 
             await db.sensor_data.insert_one({
                 "user": user["username"],
@@ -164,13 +144,13 @@ async def receive_raw_stream(payload: list[dict], user=Depends(get_current_user)
 
             await db.predictions.insert_one({
                 "user": user["username"],
-                "hydration_status": prediction,
+                "hydration_status": hydration_label,
                 "timestamp": datetime.utcnow()
             })
 
             parsed.append({
                 "raw": row,
-                "hydration": prediction
+                "hydration": hydration_label
             })
 
         except Exception as e:
@@ -183,7 +163,6 @@ async def receive_raw_stream(payload: list[dict], user=Depends(get_current_user)
         "count": len(parsed),
         "parsed": parsed
     }
-
 
 @router.get("/status/latest")
 async def get_latest_status(user=Depends(get_current_user)):

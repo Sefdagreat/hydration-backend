@@ -1,13 +1,21 @@
+# ⚙️ Web Framework & API
 fastapi
 uvicorn[standard]
-motor
-pydantic
 python-dotenv
-pandas
 python-multipart
+
+# 🛠️ Database
+motor
+
+# 🔐 Auth
 python-jose[cryptography]
 
-# ML dependencies (pinned for binary compatibility)
-joblib==1.5.0
-numpy==1.23.5
-scikit-learn==1.1.3
+# 📦 Data Handling
+pydantic
+pandas
+
+# 🤖 Machine Learning (Stable + Docker-compatible)
+joblib==1.3.2
+numpy==1.26.4
+scikit-learn==1.4.2
+thinc<8.3.6
