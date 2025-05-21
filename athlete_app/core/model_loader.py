@@ -8,8 +8,8 @@ from sklearn.preprocessing import StandardScaler
 
 # Load paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'hydration_model.joblib'))
-SCALER_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'hydration_scaler.joblib'))
+MODEL_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'hydration_model (1).joblib'))
+SCALER_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'hydration_scaler(1).joblib'))
 TRAIN_PATH = os.path.normpath(os.path.join(BASE_DIR, '..', 'model', 'train_ecg_sigmoid.csv'))
 
 # Feature order used in both training and prediction
