@@ -3,8 +3,8 @@ import joblib
 from pathlib import Path
 import sys
 
-model_path = Path("athlete_app/model/hydration_model (1).joblib")
-scaler_path = Path("athlete_app/model/hydration_scaler (1).joblib")
+model_path = Path("athlete_app/model/hydration_model.joblib")
+scaler_path = Path("athlete_app/model/hydration_scaler.joblib")
 
 try:
     model = joblib.load(model_path)
